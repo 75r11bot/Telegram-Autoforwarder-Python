@@ -28,8 +28,8 @@ class MessageForwarder:
                 await self.client.sign_in(phone_number, code=auth_code)
             else:
                 # Send code request and sign in
-                result = await self.client.sign_in(phone_number)
-                phone_code_hash = result.phone_code_hash  # Get phone_code_hash from result
+                sign_in_response = await self.client.sign_in(phone_number)
+                phone_code_hash = sign_in_response.phone_code_hash  # Get phone_code_hash from sign-in response
 
                 # Prompt user for the verification code
                 verification_code = input('Enter the verification code: ')
