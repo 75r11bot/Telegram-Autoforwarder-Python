@@ -1,10 +1,11 @@
 # TelegramForwarder.py
 import time
+import os
 import asyncio
 from telethon.sync import TelegramClient
 
 class TelegramForwarder:
-    def __init__(self, api_id, api_hash, phone_number):
+    def __init__(self, os.environ.get('APP_API_ID'), os.environ.get('APP_API_HASH'), os.environ.get('APP_YOUR_PHONE')):
         self.api_id = api_id
         self.api_hash = api_hash
         self.phone_number = phone_number
