@@ -1,13 +1,13 @@
 import os
 import asyncio
 from telethon.sync import TelegramClient
-from telethon.tl.functions.messages import ForwardMessagesRequest
 
 api_id = os.environ.get('APP_API_ID')
 api_hash = os.environ.get('APP_API_HASH')
 phone_number = os.environ.get('APP_YOUR_PHONE')
 source_channel_id = os.environ.get('SOURCE_CHANNEL_ID')
 destination_channel_id = os.environ.get('DESTINATION_CHANNEL_ID')
+auth_code = os.environ.get('AUTH_CODE')
 
 class MessageForwarder:
     def __init__(self, api_id, api_hash, phone_number, source_channel_id, destination_channel_id):
@@ -23,8 +23,11 @@ class MessageForwarder:
 
         # Ensure you're authorized
         if not await self.client.is_user_authorized():
-            await self.client.send_code_request(phone_number)
-            await self.client.sign_in(phone_number)
+            if auth_code:
+                await self.client.sign_in(phone_number, code=auth_code)
+            else:
+                await self.client.send_code_request(phone_number)
+                await self.client.sign_in(phone_number, input('Enter the code: '))
 
         # Forward messages from source channel to destination channel
         async for message in self.client.iter_messages(int(self.source_channel_id)):
