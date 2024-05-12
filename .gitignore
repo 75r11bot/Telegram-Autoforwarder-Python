@@ -1,6 +1,6 @@
 # Session files
 *.session*
-
+*session/
 # Credentials
 credentials.txt
 config.ini
@@ -17,4 +17,5 @@ __pycache__/
 # System-specific files
 .DS_Store
 Thumbs.db
-.env
+
+*.env

@@ -22,7 +22,7 @@ class MessageForwarder:
         self.api_id = api_id
         self.api_hash = api_hash
         self.phone_number = phone_number
-        self.client = TelegramClient('session_' + phone_number, api_id, api_hash)
+        self.client = TelegramClient('session/session_' + phone_number, api_id, api_hash)
 
     async def list_chats(self):
         await self.client.connect()
