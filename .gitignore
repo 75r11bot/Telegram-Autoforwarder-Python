@@ -1,5 +1,5 @@
 # Session files
-# *.session*
+*.session*
 
 # Credentials
 credentials.txt
