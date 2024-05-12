@@ -15,6 +15,7 @@ api_hash = os.environ.get('APP_API_HASH')
 phone_number = os.environ.get('APP_YOUR_PHONE')
 source_channel_id = os.environ.get('SOURCE_CHANNEL_ID')
 destination_channel_id = os.environ.get('DESTINATION_CHANNEL_ID')
+user_password = os.environ.get('nnnn9331')
 
 class MessageForwarder:
     def __init__(self, api_id, api_hash, phone_number):
@@ -42,9 +43,16 @@ class MessageForwarder:
         await self.client.connect()
 
         # Ensure you're authorized
-        if not await self.client.is_user_authorized():
-            await self.client.send_code_request(self.phone_number)
-            await self.client.sign_in(self.phone_number, input('Enter the code: '))
+        try:
+            if not await self.client.is_user_authorized():
+                await self.client.send_code_request(self.phone_number)
+                code = await self.client.sign_in(code_callback=get_code_from_telegram_message)
+
+                await self.client.sign_in(self.phone_number, code)
+        except SessionPasswordNeededError:
+            # The session requires a password for authorization
+            password = user_password
+            await self.client.sign_in(password=password)
 
         # Resolve the source chat entity
         try:
@@ -54,7 +62,7 @@ class MessageForwarder:
             return
 
         # Define event handler for processing new messages in the source chat
-        @self.client.on(events.NewMessage(chats=source_entity))
+        @self.client.on(events.NewMessage(chats=[source_entity]))
         async def message_handler(event):
             print("Received new message:", event.message.text)
 
@@ -63,6 +71,13 @@ class MessageForwarder:
 
         # Start the event loop
         await self.client.run_until_disconnected()
+
+async def get_code_from_telegram_message(client):
+    # Wait for a new message and extract the code from it
+    message = await client.get_messages('me', limit=1)
+    # Implement this function to extract the code from the message
+    code = extract_code_from_message(message)
+    return code
 
 async def main():
     forwarder = MessageForwarder(api_id, api_hash, phone_number)
