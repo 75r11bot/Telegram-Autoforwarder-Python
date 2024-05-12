@@ -15,7 +15,6 @@ api_hash = os.environ.get('APP_API_HASH')
 phone_number = os.environ.get('APP_YOUR_PHONE')
 source_channel_id = os.environ.get('SOURCE_CHANNEL_ID')
 destination_channel_id = os.environ.get('DESTINATION_CHANNEL_ID')
-auth_code = os.environ.get('AUTH_CODE')
 
 class MessageForwarder:
     def __init__(self, api_id, api_hash, phone_number):
@@ -24,28 +23,62 @@ class MessageForwarder:
         self.phone_number = phone_number
         self.client = TelegramClient('session_' + phone_number, api_id, api_hash)
 
-    async def forward_messages_to_channel(self, source_chat_id, destination_channel_id, keywords):
+    async def list_chats(self):
+        await self.client.connect()
+
+        # Ensure you're authorized
+        if not await self.client.is_user_authorized():
+            await self.client.send_code_request(self.phone_number)
+            await self.client.sign_in(self.phone_number, input('Enter the code: '))
+
+        # Get a list of all the dialogs (chats)
+        dialogs = await self.client.get_dialogs()
+
+        # Print information about each chat
+        for dialog in dialogs:
+            print(f"Chat ID: {dialog.id}, Title: {dialog.title}")
+
+    async def forward_new_messages(self):
+        await self.client.connect()
+
+        # Ensure you're authorized
+        if not await self.client.is_user_authorized():
+            await self.client.send_code_request(self.phone_number)
+            await self.client.sign_in(self.phone_number, input('Enter the code: '))
+
+        # Resolve the source chat entity
+        try:
+            source_entity = await self.client.get_entity(int(source_channel_id))
+        except ValueError:
+            print(f"Cannot find any entity corresponding to {source_channel_id}")
+            return
+
+        # Define event handler for processing new messages in the source chat
+        @self.client.on(events.NewMessage(chats=source_entity))
         async def message_handler(event):
-            # Check if the message is from the source chat
-            if event.chat_id == source_chat_id:
-                # Forward the message to the destination channel
-                await self.client.forward_messages(destination_channel_id, event.message)
+            print("Received new message:", event.message.text)
 
-        # Add event handler for new messages in the source chat
-        self.client.add_event_handler(message_handler, events.NewMessage)
+            # Forward the message to the destination channel
+            await self.client.forward_messages(destination_channel_id, event.message)
 
-        # Start the client
-        await self.client.start()
+        # Start the event loop
+        await self.client.run_until_disconnected()
 
 async def main():
     forwarder = MessageForwarder(api_id, api_hash, phone_number)
 
-    # Source and destination chat IDs
-    source_chat_id = -1001836737719  # H25 THAILAND
-    destination_channel_id = -4111321247  # H25-Bonus-Code
+    print("Choose an option:")
+    print("1. List Chats")
+    print("2. Forward New Messages")
 
-    # Forward messages from the source to the destination
-    await forwarder.forward_messages_to_channel(source_chat_id, destination_channel_id, [])
+    choice = input("Enter your choice: ")
+
+    if choice == "1":
+        await forwarder.list_chats()
+    elif choice == "2":
+        await forwarder.forward_new_messages()
+    else:
+        print("Invalid choice")
 
 if __name__ == "__main__":
     asyncio.run(main())
