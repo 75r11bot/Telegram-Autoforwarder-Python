@@ -14,7 +14,7 @@ load_dotenv()
 api_id = os.environ.get('APP_API_ID')
 api_hash = os.environ.get('APP_API_HASH')
 phone_number = os.environ.get('APP_YOUR_PHONE')
-source_channel_id = os.environ.get('SOURCE_TEST_CHANNEL_ID')
+source_channel_id = os.environ.get('SOURCE_CHANNEL_ID')
 destination_channel_id = os.environ.get('DESTINATION_CHANNEL_ID')
 user_password = os.environ.get('APP_YOUR_PWD')
 
