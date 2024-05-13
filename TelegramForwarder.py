@@ -50,7 +50,8 @@ class MessageForwarder:
         # Ensure you're authorized
         if not await self.client.is_user_authorized():
             await self.client.send_code_request(self.phone_number)
-            await self.client.sign_in(self.phone_number, input('Enter the code: '))
+            # await self.client.sign_in(self.phone_number, input('Enter the code: '))
+            await self.client.sign_in(self.phone_number, 70298)
 
         # Get a list of all the dialogs (chats)
         dialogs = await self.client.get_dialogs()
