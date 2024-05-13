@@ -1,6 +1,5 @@
 # TelegramForwarder.py
 import os
-import getpass
 import aiohttp
 import asyncio
 from telethon import TelegramClient, events
@@ -50,9 +49,7 @@ class MessageForwarder:
 
         # Ensure you're authorized
         if not await self.client.is_user_authorized():
-            code = getpass.getpass(prompt='Enter the code: ')
             await self.client.send_code_request(self.phone_number)
-            await self.client.sign_in(self.phone_number, code)
 
         # Get a list of all the dialogs (chats)
         dialogs = await self.client.get_dialogs()
@@ -70,10 +67,6 @@ class MessageForwarder:
         try:
             if not await self.client.is_user_authorized():
                 await self.client.send_code_request(self.phone_number)
-                # Get code from user input
-                code = input('Enter the code: ')
-                # Log in with code
-                await self.client.sign_in(self.phone_number, code)
         except SessionPasswordNeededError:
             # The session requires a password for authorization
             password = user_password
