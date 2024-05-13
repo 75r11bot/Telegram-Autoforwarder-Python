@@ -131,8 +131,8 @@ async def main():
         print("Choose an option:")
         print("1. List Chats")
         print("2. Forward New Messages")
-        choice = input("Enter your choice: ")
-
+        #choice = input("Enter your choice: ")
+        choice ="2"
         if choice == "1":
             await forwarder.list_chats()
         elif choice == "2":

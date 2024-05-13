@@ -41,10 +41,11 @@ async def send_next_request(data_array, token, api_endpoint, headers):
                 print("Error sending request to API:", error)
                 # Implement error handling logic here
 
-async def mock_send_requests(endpoint ,data_array):
+async def mock_send_requests(endpoint, data_array):
     try:
         device_code = os.environ.get('DEVICE_CODE')
-        source_domain = os.environ.get('SOURCE_DOMAIN')
+        # Remove "/api" from the endpoint
+        source_domain = endpoint.replace("/api", "")
         h25_token = os.environ.get('H25_TOKEN')
         sign = os.environ.get('SIGN')
 
