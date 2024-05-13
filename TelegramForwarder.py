@@ -1,9 +1,7 @@
 import os
 import asyncio
-from telethon.sync import TelegramClient
+from telethon import TelegramClient, events
 from telethon.errors import SessionPasswordNeededError
-from telethon import events
-
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -15,7 +13,7 @@ api_hash = os.environ.get('APP_API_HASH')
 phone_number = os.environ.get('APP_YOUR_PHONE')
 source_channel_id = os.environ.get('SOURCE_CHANNEL_ID')
 destination_channel_id = os.environ.get('DESTINATION_CHANNEL_ID')
-user_password = os.environ.get('nnnn9331')
+user_password = os.environ.get('APP_YOUR_PWD')
 
 class MessageForwarder:
     def __init__(self, api_id, api_hash, phone_number):
@@ -23,9 +21,20 @@ class MessageForwarder:
         self.api_hash = api_hash
         self.phone_number = phone_number
         self.client = TelegramClient('session/session_' + phone_number, api_id, api_hash)
+        self.connected = False
+
+    async def connect(self):
+        await self.client.connect()
+        self.connected = True
+
+    async def disconnect(self):
+        await self.client.disconnect()
+        self.connected = False
 
     async def list_chats(self):
-        await self.client.connect()
+        # Connect if not already connected
+        if not self.connected:
+            await self.connect()
 
         # Ensure you're authorized
         if not await self.client.is_user_authorized():
@@ -40,19 +49,27 @@ class MessageForwarder:
             print(f"Chat ID: {dialog.id}, Title: {dialog.title}")
 
     async def forward_new_messages(self):
-        await self.client.connect()
+        # Connect if not already connected
+        if not self.connected:
+            await self.connect()
 
         # Ensure you're authorized
         try:
             if not await self.client.is_user_authorized():
                 await self.client.send_code_request(self.phone_number)
-                code = await self.client.sign_in(code_callback=get_code_from_telegram_message)
-
+                # Get code from user input
+                code = input('Enter the code: ')
+                # Log in with code
                 await self.client.sign_in(self.phone_number, code)
         except SessionPasswordNeededError:
             # The session requires a password for authorization
             password = user_password
-            await self.client.sign_in(password=password)
+            try:
+                # Try logging in with password
+                await self.client.sign_in(password=password)
+            except SessionPasswordNeededError:
+                # Handle incorrect password
+                print("Incorrect password")
 
         # Resolve the source chat entity
         try:
@@ -72,28 +89,26 @@ class MessageForwarder:
         # Start the event loop
         await self.client.run_until_disconnected()
 
-async def get_code_from_telegram_message(client):
-    # Wait for a new message and extract the code from it
-    message = await client.get_messages('me', limit=1)
-    # Implement this function to extract the code from the message
-    code = extract_code_from_message(message)
-    return code
-
 async def main():
     forwarder = MessageForwarder(api_id, api_hash, phone_number)
 
-    print("Choose an option:")
-    print("1. List Chats")
-    print("2. Forward New Messages")
+    while True:
+        print("Choose an option:")
+        print("1. List Chats")
+        print("2. Forward New Messages")
+        choice = input("Enter your choice: ")
 
-    # choice = input("Enter your choice: ")
-    choice = "2"
-    if choice == "1":
-        await forwarder.list_chats()
-    elif choice == "2":
-        await forwarder.forward_new_messages()
-    else:
-        print("Invalid choice")
+        if choice == "1":
+            await forwarder.list_chats()
+        elif choice == "2":
+            try:
+                await forwarder.forward_new_messages()
+            except Exception as e:
+                print(f"An error occurred: {e}")
+                print("Attempting to reconnect...")
+                await forwarder.disconnect()
+        else:
+            print("Invalid choice")
 
 if __name__ == "__main__":
     asyncio.run(main())
