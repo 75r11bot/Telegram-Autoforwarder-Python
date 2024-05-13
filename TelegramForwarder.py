@@ -118,7 +118,7 @@ async def ping_endpoint(endpoint):
     except aiohttp.ClientError as e:
         print(f"Error connecting to {endpoint}: {e}")
 
-        
+
 async def main():
     forwarder = MessageForwarder(api_id, api_hash, phone_number)
     # Define your API endpoints here
@@ -136,8 +136,8 @@ async def main():
         print("Choose an option:")
         print("1. List Chats")
         print("2. Forward New Messages")
-        choice = input("Enter your choice: ")
-        # choice ="2"
+        # choice = input("Enter your choice: ")
+        choice ="2"
         if choice == "1":
             await forwarder.list_chats()
         elif choice == "2":
