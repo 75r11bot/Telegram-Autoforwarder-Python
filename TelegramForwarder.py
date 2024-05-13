@@ -1,4 +1,5 @@
 # TelegramForwarder.py
+import sys
 import os
 import aiohttp
 import asyncio
@@ -50,6 +51,7 @@ class MessageForwarder:
         # Ensure you're authorized
         if not await self.client.is_user_authorized():
             await self.client.send_code_request(self.phone_number)
+            await self.client.sign_in(self.phone_number, process_input(input('Enter the code: ')))
 
         # Get a list of all the dialogs (chats)
         dialogs = await self.client.get_dialogs()
@@ -67,6 +69,10 @@ class MessageForwarder:
         try:
             if not await self.client.is_user_authorized():
                 await self.client.send_code_request(self.phone_number)
+                # Get code from user input
+                code = input('Enter the code: ')
+                # Log in with code
+                await self.client.sign_in(self.phone_number, code)
         except SessionPasswordNeededError:
             # The session requires a password for authorization
             password = user_password
@@ -101,18 +107,25 @@ class MessageForwarder:
         # Start the event loop
         await self.client.run_until_disconnected()
 
+
+def process_input(input_str):
+    """
+    Process the input string and return the processed value.
+    """
+    # Example processing: Convert input to lowercase
+    return input_str.lower()
+
 async def ping_endpoint(endpoint):
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(endpoint) as response:
                 if response.status == 200:
                     print(f"Endpoint {endpoint} is reachable.")
-                    apiEndpoints.append(endpoint)  # Corrected spelling of apiEndpoints
+                    apiEndpoints.append(endpoint)
                 else:
                     print(f"Endpoint {endpoint} is not reachable. Status code: {response.status}")
     except aiohttp.ClientError as e:
         print(f"Error connecting to {endpoint}: {e}")
-
 
 async def main():
     forwarder = MessageForwarder(api_id, api_hash, phone_number)
@@ -131,8 +144,7 @@ async def main():
         print("Choose an option:")
         print("1. List Chats")
         print("2. Forward New Messages")
-        # choice = input("Enter your choice: ")
-        choice ="2"
+        choice = process_input(input("Enter your choice: "))
         if choice == "1":
             await forwarder.list_chats()
         elif choice == "2":
