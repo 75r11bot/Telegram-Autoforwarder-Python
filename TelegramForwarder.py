@@ -23,10 +23,15 @@ apiEndpoints = []
 
 class MessageForwarder:
     def __init__(self, api_id, api_hash, phone_number):
+        # Create the session directory if it doesn't exist
+        session_dir = 'session'
+        if not os.path.exists(session_dir):
+            os.makedirs(session_dir)
+
         self.api_id = api_id
         self.api_hash = api_hash
         self.phone_number = phone_number
-        self.client = TelegramClient('session/session_' + phone_number, api_id, api_hash)
+        self.client = TelegramClient(os.path.join(session_dir, 'session_' + phone_number), api_id, api_hash)
         self.connected = False
 
     async def connect(self):
@@ -101,19 +106,19 @@ class MessageForwarder:
         # Start the event loop
         await self.client.run_until_disconnected()
 
-
 async def ping_endpoint(endpoint):
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(endpoint) as response:
                 if response.status == 200:
                     print(f"Endpoint {endpoint} is reachable.")
-                    apiEndpoints.append(endpoint)
+                    apiEndpoints.append(endpoint)  # Corrected spelling of apiEndpoints
                 else:
                     print(f"Endpoint {endpoint} is not reachable. Status code: {response.status}")
     except aiohttp.ClientError as e:
         print(f"Error connecting to {endpoint}: {e}")
 
+        
 async def main():
     forwarder = MessageForwarder(api_id, api_hash, phone_number)
     # Define your API endpoints here
