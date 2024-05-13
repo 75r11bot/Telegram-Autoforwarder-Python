@@ -1,4 +1,5 @@
 # TelegramForwarder.py
+import sys
 import os
 import aiohttp
 import asyncio
@@ -107,13 +108,6 @@ class MessageForwarder:
         await self.client.run_until_disconnected()
 
 
-def process_input(input_str):
-    """
-    Process the input string and return the processed value.
-    """
-    # Example processing: Convert input to lowercase
-    return input_str.lower()
-
 async def ping_endpoint(endpoint):
     try:
         async with aiohttp.ClientSession() as session:
@@ -125,6 +119,22 @@ async def ping_endpoint(endpoint):
                     print(f"Endpoint {endpoint} is not reachable. Status code: {response.status}")
     except aiohttp.ClientError as e:
         print(f"Error connecting to {endpoint}: {e}")
+
+def process_input(input_str):
+    """
+    Process the input string and return the processed value.
+    """
+    # Example processing: Convert input to lowercase
+    return input_str.lower()
+
+def get_input(prompt):
+    try:
+        return process_input(input(prompt))
+    except EOFError:
+        # Handle EOFError gracefully by returning a default value
+        print("EOFError: No input available. Using default choice.")
+        return "default"
+
 
 async def main():
     forwarder = MessageForwarder(api_id, api_hash, phone_number)
@@ -143,7 +153,7 @@ async def main():
         print("Choose an option:")
         print("1. List Chats")
         print("2. Forward New Messages")
-        choice = process_input(input("Enter your choice: "))
+        choice = get_input("Enter your choice: ")
         if choice == "1":
             await forwarder.list_chats()
         elif choice == "2":
