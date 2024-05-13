@@ -1,5 +1,4 @@
 # TelegramForwarder.py
-import sys
 import os
 import aiohttp
 import asyncio
