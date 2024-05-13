@@ -20,7 +20,14 @@ user_password = os.environ.get('APP_YOUR_PWD')
 # Global variable to store API endpoints
 apiEndpoints = []
 
+# Add an additional blank line here to comply with the Flake8 E302 rule
+
+
 class MessageForwarder:
+    """
+    A class for forwarding messages from one Telegram channel to another.
+    """
+
     def __init__(self, api_id, api_hash, phone_number):
         # Create the session directory if it doesn't exist
         session_dir = 'session'
@@ -30,7 +37,11 @@ class MessageForwarder:
         self.api_id = api_id
         self.api_hash = api_hash
         self.phone_number = phone_number
-        self.client = TelegramClient(os.path.join(session_dir, 'session_' + phone_number), api_id, api_hash)
+        self.client = TelegramClient(
+            os.path.join(session_dir, 'session_' + phone_number),
+            api_id,
+            api_hash
+        )
         self.connected = False
 
     async def connect(self):
@@ -118,6 +129,7 @@ async def ping_endpoint(endpoint):
     except aiohttp.ClientError as e:
         print(f"Error connecting to {endpoint}: {e}")
 
+
 def process_input(input_str):
     """
     Process the input string and return the processed value.
@@ -125,7 +137,14 @@ def process_input(input_str):
     # Example processing: Convert input to lowercase
     return input_str.lower()
 
+
+# Add two blank lines here to comply with the Flake8 E302 rule
+
+
 def get_input(prompt):
+    """
+    Prompt user for input and return the processed value.
+    """
     try:
         return process_input(input(prompt))
     except EOFError:
