@@ -1,8 +1,11 @@
+# TelegramForwarder.py
 import os
+import aiohttp
 import asyncio
 from telethon import TelegramClient, events
 from telethon.errors import SessionPasswordNeededError
 from dotenv import load_dotenv
+from Services import process_bonus_code
 
 # Load environment variables from .env file
 load_dotenv()
@@ -11,9 +14,12 @@ load_dotenv()
 api_id = os.environ.get('APP_API_ID')
 api_hash = os.environ.get('APP_API_HASH')
 phone_number = os.environ.get('APP_YOUR_PHONE')
-source_channel_id = os.environ.get('SOURCE_CHANNEL_ID')
+source_channel_id = os.environ.get('SOURCE_TEST_CHANNEL_ID')
 destination_channel_id = os.environ.get('DESTINATION_CHANNEL_ID')
 user_password = os.environ.get('APP_YOUR_PWD')
+
+# Global variable to store API endpoints
+apiEndpoints = []
 
 class MessageForwarder:
     def __init__(self, api_id, api_hash, phone_number):
@@ -83,14 +89,43 @@ class MessageForwarder:
         async def message_handler(event):
             print("Received new message:", event.message.text)
 
-            # Forward the message to the destination channel
-            await self.client.forward_messages(destination_channel_id, event.message)
+            try:
+                # Forward the message to the destination channel
+                await self.client.forward_messages(int(destination_channel_id), event.message)
+
+                # Process bonus codes from the message
+                await process_bonus_code(apiEndpoints, event.message.text)
+            except Exception as e:
+                print(f"An error occurred while processing the message: {e}")
 
         # Start the event loop
         await self.client.run_until_disconnected()
 
+
+async def ping_endpoint(endpoint):
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(endpoint) as response:
+                if response.status == 200:
+                    print(f"Endpoint {endpoint} is reachable.")
+                    apiEndpoints.append(endpoint)
+                else:
+                    print(f"Endpoint {endpoint} is not reachable. Status code: {response.status}")
+    except aiohttp.ClientError as e:
+        print(f"Error connecting to {endpoint}: {e}")
+
 async def main():
     forwarder = MessageForwarder(api_id, api_hash, phone_number)
+    # Define your API endpoints here
+    api_endpoints = [
+        os.environ.get('API_ENDPOINT_1'),
+        os.environ.get('API_ENDPOINT_2'),
+        os.environ.get('API_ENDPOINT_3')
+    ]
+    
+    # Ping each endpoint asynchronously
+    tasks = [ping_endpoint(endpoint) for endpoint in api_endpoints]
+    await asyncio.gather(*tasks)
 
     while True:
         print("Choose an option:")
