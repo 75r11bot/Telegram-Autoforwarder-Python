@@ -204,18 +204,9 @@ async def main():
             print("Invalid choice")
 
 if __name__ == "__main__":
-    # asyncio.run(main())
-    # app.run(host='0.0.0.0', port=5000)
-    # Start the Flask app as a background task
-    port = int(os.environ.get('PORT', 10000))
-    flask_task = asyncio.create_task(app.run(host='0.0.0.0', port=port))
-
-    # Run the asyncio event loop
-    asyncio.run(main())
-
-    # Wait for the Flask app to finish (optional)
-    flask_task.cancel()
-    try:
-        asyncio.run(flask_task)
-    except asyncio.CancelledError:
-        pass
+    # Create an event loop
+    loop = asyncio.get_event_loop()
+    # Run the main function inside the event loop
+    loop.run_until_complete(main())
+    # Close the event loop
+    loop.close()
