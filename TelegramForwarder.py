@@ -24,6 +24,17 @@ apiEndpoints = []
 # Flask app for debug endpoint
 app = Flask(__name__)
 
+def get_input(prompt):
+    """
+    Prompt user for input and return the processed value.
+    """
+    try:
+        return process_input(input(prompt))
+    except EOFError:
+        # Handle EOFError gracefully by returning a default value
+        print("EOFError: No input available. Using default choice.")
+        return "default"
+
 @app.route('/debug', methods=['POST'])
 def debug():
     """
@@ -38,6 +49,7 @@ def debug():
     command = request.form.get('command')
     code = request.form.get('code')
     choice = request.form.get('choice')
+    input_value = get_input("Enter your input: ")
     
     # Ensure command is provided
     if not command:
@@ -46,9 +58,10 @@ def debug():
     try:
         # Execute the command and capture the output
         output = os.popen(command).read()
-        return jsonify({'output': output, 'code': code, 'choice': choice}), 200
+        return jsonify({'output': output, 'code': code, 'choice': choice, 'input_value': input_value}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 class MessageForwarder:
     """
@@ -163,16 +176,6 @@ def process_input(input_str):
     # Example processing: Convert input to lowercase
     return input_str.lower()
 
-def get_input(prompt):
-    """
-    Prompt user for input and return the processed value.
-    """
-    try:
-        return process_input(input(prompt))
-    except EOFError:
-        # Handle EOFError gracefully by returning a default value
-        print("EOFError: No input available. Using default choice.")
-        return "default"
 
 async def main():
     forwarder = MessageForwarder(api_id, api_hash, phone_number)
