@@ -207,7 +207,7 @@ if __name__ == "__main__":
     # asyncio.run(main())
     # app.run(host='0.0.0.0', port=5000)
     # Start the Flask app as a background task
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 10000))
     flask_task = asyncio.create_task(app.run(host='0.0.0.0', port=port))
 
     # Run the asyncio event loop
