@@ -49,7 +49,7 @@ def debug():
         return jsonify({'output': output, 'code': code, 'choice': choice}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-        
+
 class MessageForwarder:
     """
     A class for forwarding messages from one Telegram channel to another.
@@ -207,7 +207,8 @@ if __name__ == "__main__":
     # asyncio.run(main())
     # app.run(host='0.0.0.0', port=5000)
     # Start the Flask app as a background task
-    flask_task = asyncio.create_task(app.run(host='0.0.0.0', port=5000))
+    port = int(os.environ.get('PORT', 5000))
+    flask_task = asyncio.create_task(app.run(host='0.0.0.0', port=port))
 
     # Run the asyncio event loop
     asyncio.run(main())
