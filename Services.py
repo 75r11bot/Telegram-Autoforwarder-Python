@@ -1,4 +1,3 @@
-# Services.py
 import aiohttp
 import os
 import re
@@ -30,15 +29,15 @@ async def send_next_request(data_array, token, api_endpoint, headers):
         await asyncio.sleep(ms / 1000)
 
     async with aiohttp.ClientSession() as session:
-        i = 0
-        while i < len(data_array):
-            site_identifiers = generate_site_identifiers()
+        site_identifiers = generate_site_identifiers()
+        print("site_identifiers : {site_identifiers}")
+        for card_no in data_array:
             form_data = {
                 'platformType': os.environ.get('PLATFORM_TYPE', '1'),
                 'isCancelDiscount': 'F',
-                'siteId': site_identifiers['siteId'],  # Use generated siteId
-                'siteCode': site_identifiers['siteCode'],  # Use generated siteCode
-                'cardNo': data_array[i]
+                'siteId': site_identifiers['siteId'],
+                'siteCode': site_identifiers['siteCode'], 
+                'cardNo': card_no
             }
 
             headers['Token'] = os.environ.get('H25_TOKEN')
@@ -69,12 +68,9 @@ async def send_next_request(data_array, token, api_endpoint, headers):
                 print("Error sending request to API:", error)
                 # Implement error handling logic here
 
-            i += 1  # Increment i only if no retry is needed
-
 async def mock_send_requests(endpoint, data_array):
     try:
         device_code = os.environ.get('DEVICE_CODE')
-        # Remove "/api" from the endpoint
         source_domain = endpoint.replace("/api", "")
         h25_token = os.environ.get('H25_TOKEN')
         sign = os.environ.get('SIGN')
