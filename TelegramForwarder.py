@@ -53,7 +53,7 @@ def debug():
 class MessageForwarder:
     def __init__(self, api_id, api_hash, phone_number, source_channel_ids, destination_channel_id, user_password):
         # Create the session directory if it doesn't exist
-        session_dir = 'session'
+        session_dir = 'sessions'
         if not os.path.exists(session_dir):
             os.makedirs(session_dir)
 
@@ -63,7 +63,7 @@ class MessageForwarder:
         self.source_channel_ids = source_channel_ids
         self.destination_channel_id = destination_channel_id
         self.user_password = user_password
-        self.client = TelegramClient("session/session_{phone_number}", api_id, api_hash)
+        self.client = TelegramClient(f"sessions/session_{phone_number}", api_id, api_hash)
         self.connected = False
 
     async def connect(self):
