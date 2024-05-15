@@ -1,42 +1,42 @@
 # Exported from Render on 2024-05-13T16:46:20Z
 services:
-- type: web
-  name: Telegram-Autoforwarder-Python
-  runtime: python
-  repo: https://github.com/75r11bot/Telegram-Autoforwarder-Python
-  plan: free
-  envVars:
-  - key: DEVICE_CODE
-    sync: false
-  - key: PLAT_FORM_TYPE
-    sync: false
-  - key: H25_CHANNEL_ID
-    sync: false
-  - key: API_ENDPOINT_3
-    sync: false
-  - key: API_ENDPOINT_2
-    sync: false
-  - key: API_ENDPOINT_1
-    sync: false
-  - key: SIGN
-    sync: false
-  - key: H25_TOKEN
-    sync: false
-  - key: APP_YOUR_PWD
-    sync: false
-  - key: SOURCE_TEST_CHANNEL_ID
-    sync: false
-  - key: SOURCE_CHANNEL_ID
-    sync: false
-  - key: DESTINATION_CHANNEL_ID
-    sync: false
-  - key: APP_YOUR_PHONE
-    sync: false
-  - key: APP_API_HASH
-    sync: false
-  - key: APP_API_ID
-    sync: false
-  region: oregon
-  buildCommand: pip install -r requirements.txt
-  startCommand: python TelegramForwarder.py
+  - type: web
+    name: Telegram-Autoforwarder-Python
+    runtime: python
+    repo: https://github.com/75r11bot/Telegram-Autoforwarder-Python
+    plan: free
+    envVars:
+      - key: DEVICE_CODE
+        sync: false
+      - key: PLAT_FORM_TYPE
+        sync: false
+      - key: H25_CHANNEL_ID
+        sync: false
+      - key: API_ENDPOINT_3
+        sync: false
+      - key: API_ENDPOINT_2
+        sync: false
+      - key: API_ENDPOINT_1
+        sync: false
+      - key: SIGN
+        sync: true
+      - key: H25_TOKEN
+        sync: true
+      - key: APP_YOUR_PWD
+        sync: false
+      - key: SOURCE_TEST_CHANNEL_ID
+        sync: false
+      - key: SOURCE_CHANNEL_ID
+        sync: false
+      - key: DESTINATION_CHANNEL_ID
+        sync: false
+      - key: APP_YOUR_PHONE
+        sync: false
+      - key: APP_API_HASH
+        sync: false
+      - key: APP_API_ID
+        sync: false
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: python TelegramForwarder.py
 version: "1"

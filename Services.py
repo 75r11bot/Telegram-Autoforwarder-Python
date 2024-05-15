@@ -2,41 +2,27 @@ import aiohttp
 import os
 import re
 import asyncio
-import uuid
-import random
-import string
 from datetime import datetime
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
 
-def generate_site_identifiers():
-    def generate_uuid():
-        return str(uuid.uuid4())
+# Constants
+RETRY_INTERVAL_MS = 10  # Retry interval for specific response codes in milliseconds
+RATE_LIMIT_INTERVAL_MS = 500  # Interval to wait if rate limit is exceeded in milliseconds
 
-    def generate_site_code(length=8):
-        characters = string.ascii_letters + string.digits
-        return ''.join(random.choice(characters) for _ in range(length))
-
-    return {
-        'siteId': generate_uuid(),
-        'siteCode': generate_site_code()
-    }
-
-async def send_next_request(data_array, token, api_endpoint, headers):
+async def send_next_request(data_array, api_endpoint, headers):
     async def sleep(ms):
-        await asyncio.sleep(ms / 1000)
+        await asyncio.sleep(ms / 1000)  # Convert milliseconds to seconds
 
     async with aiohttp.ClientSession() as session:
-        site_identifiers = generate_site_identifiers()
-        print("site_identifiers : {site_identifiers}")
         for card_no in data_array:
             form_data = {
                 'platformType': os.environ.get('PLATFORM_TYPE', '1'),
                 'isCancelDiscount': 'F',
-                'siteId': site_identifiers['siteId'],
-                'siteCode': site_identifiers['siteCode'], 
+                'siteId': "1451470260579512322",
+                'siteCode': "ybaxcf-4",
                 'cardNo': card_no
             }
 
@@ -53,20 +39,20 @@ async def send_next_request(data_array, token, api_endpoint, headers):
                         print("Response Body:", response_data)
                         if response_data.get('code') == 9999:
                             print("Response code is 9999. Retrying request...")
-                            await sleep(50)
-                            continue  # Retry the request without incrementing i
+                            await sleep(RETRY_INTERVAL_MS)
+                            continue  # Retry the request without incrementing card_no
                         elif response_data.get('code') == 10003:
                             print("Rate limit exceeded. Retrying after delay...")
-                            await sleep(1000)  # Wait 1 second before retrying
-                            continue  # Retry the request without incrementing i
+                            await sleep(RATE_LIMIT_INTERVAL_MS)
+                            continue  # Retry the request without incrementing card_no
                     except aiohttp.ContentTypeError:
                         text_response = await response.text()
                         print("Unexpected response content:", text_response)
                         print("Headers:", response.headers)
                         # Handle non-JSON response here
             except aiohttp.ClientError as error:
-                print("Error sending request to API:", error)
-                # Implement error handling logic here
+                print(f"Error sending request to API: {error}")
+                # Implement additional error handling logic here if needed
 
 async def mock_send_requests(endpoint, data_array):
     try:
@@ -87,7 +73,7 @@ async def mock_send_requests(endpoint, data_array):
             'Language': "th-TH",
             'Origin': source_domain,
             'Pragma': "no-cache",
-            'Referer': source_domain + "/",
+            'Referer': f"{source_domain}/",
             'Sec-Ch-Ua': '"Google Chrome";v="123", "Not:A-Brand";v="8", "Chromium";v="123"',
             'Sec-Ch-Ua-Mobile': "?0",
             'Sec-Ch-Ua-Platform': '"Windows"',
@@ -100,9 +86,9 @@ async def mock_send_requests(endpoint, data_array):
             'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
         }
         # Call the send_next_request function with the appropriate parameters
-        await send_next_request(data_array, h25_token, endpoint, headers)
+        await send_next_request(data_array, endpoint, headers)
     except Exception as error:
-        print("Error:", error)
+        print(f"Error: {error}")
 
 # Define function to process bonus codes
 async def process_bonus_code(apiEndpoints, text):
