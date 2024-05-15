@@ -100,8 +100,11 @@ class MessageForwarder:
                     @self.client.on(events.NewMessage(chats=source_channel_ids))
                     async def message_handler(event):
                         try:
+                            print(f"New message received: {event.message.text}")  # Debug statement
                             await self.client.forward_messages(self.destination_channel_id, event.message)
+                            print(f"Message forwarded to {self.destination_channel_id}")  # Debug statement
                             await process_bonus_code(apiEndpoints, event.message.text)
+                            print("process_bonus_code called successfully")  # Debug statement
                         except Exception as e:
                             print(f"An error occurred while processing the message: {e}")
 
