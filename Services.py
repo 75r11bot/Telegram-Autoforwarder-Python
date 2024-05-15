@@ -1,28 +1,47 @@
+# Services.py
 import aiohttp
 import os
 import re
 import asyncio
+import uuid
+import random
+import string
 from datetime import datetime
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
 
+def generate_site_identifiers():
+    def generate_uuid():
+        return str(uuid.uuid4())
+
+    def generate_site_code(length=8):
+        characters = string.ascii_letters + string.digits
+        return ''.join(random.choice(characters) for _ in range(length))
+
+    return {
+        'siteId': generate_uuid(),
+        'siteCode': generate_site_code()
+    }
+
 async def send_next_request(data_array, token, api_endpoint, headers):
     async def sleep(ms):
         await asyncio.sleep(ms / 1000)
 
     async with aiohttp.ClientSession() as session:
-        for i in range(len(data_array)):
+        i = 0
+        while i < len(data_array):
+            site_identifiers = generate_site_identifiers()
             form_data = {
                 'platformType': os.environ.get('PLATFORM_TYPE', '1'),
                 'isCancelDiscount': 'F',
-                'siteId': '1451470260579512322',
-                'siteCode': 'ybaxcf-4',
+                'siteId': site_identifiers['siteId'],  # Use generated siteId
+                'siteCode': site_identifiers['siteCode'],  # Use generated siteCode
                 'cardNo': data_array[i]
             }
 
-            headers['Token'] = token
+            headers['Token'] = os.environ.get('H25_TOKEN')
 
             try:
                 async with session.post(
@@ -30,15 +49,27 @@ async def send_next_request(data_array, token, api_endpoint, headers):
                     data=form_data,
                     headers=headers
                 ) as response:
-                    response_data = await response.json()
-                    print("Response Body:", response_data)
-                    if response_data.get('code') == 9999:
-                        print("Response code is 9999. Retrying request...")
-                        await sleep(50)
-                        i -= 1  # Retry the request
+                    try:
+                        response_data = await response.json()
+                        print("Response Body:", response_data)
+                        if response_data.get('code') == 9999:
+                            print("Response code is 9999. Retrying request...")
+                            await sleep(50)
+                            continue  # Retry the request without incrementing i
+                        elif response_data.get('code') == 10003:
+                            print("Rate limit exceeded. Retrying after delay...")
+                            await sleep(1000)  # Wait 1 second before retrying
+                            continue  # Retry the request without incrementing i
+                    except aiohttp.ContentTypeError:
+                        text_response = await response.text()
+                        print("Unexpected response content:", text_response)
+                        print("Headers:", response.headers)
+                        # Handle non-JSON response here
             except aiohttp.ClientError as error:
                 print("Error sending request to API:", error)
                 # Implement error handling logic here
+
+            i += 1  # Increment i only if no retry is needed
 
 async def mock_send_requests(endpoint, data_array):
     try:
@@ -67,6 +98,7 @@ async def mock_send_requests(endpoint, data_array):
             'Sec-Fetch-Dest': "empty",
             'Sec-Fetch-Mode': "cors",
             'Sec-Fetch-Site': "same-origin",
+            'token': h25_token,
             'Sign': sign,
             'Timestamp': datetime.now().isoformat(),
             'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
@@ -88,8 +120,7 @@ async def process_bonus_code(apiEndpoints, text):
             try:
                 await mock_send_requests(endpoint, filtered_codes)
             except Exception as e:
-                    print(f"An error occurred: {e}")
-
+                print(f"An error occurred: {e}")
     else:
         print("No valid bonus codes found:", filtered_codes)
 
