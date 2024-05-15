@@ -63,7 +63,7 @@ class MessageForwarder:
         self.source_channel_ids = source_channel_ids
         self.destination_channel_id = destination_channel_id
         self.user_password = user_password
-        self.client = TelegramClient("session_{phone_number}", api_id, api_hash)
+        self.client = TelegramClient("session/session_{phone_number}", api_id, api_hash)
         self.connected = False
 
     async def connect(self):
