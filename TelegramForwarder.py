@@ -52,8 +52,8 @@ def debug():
 
 class MessageForwarder:
     def __init__(self, api_id, api_hash, phone_number, source_channel_ids, destination_channel_id, user_password):
-        # Create the sessions directory if it doesn't exist
-        session_dir = 'sessions'
+        # Create the session directory if it doesn't exist
+        session_dir = 'session'
         if not os.path.exists(session_dir):
             os.makedirs(session_dir)
 
@@ -63,7 +63,7 @@ class MessageForwarder:
         self.source_channel_ids = source_channel_ids
         self.destination_channel_id = destination_channel_id
         self.user_password = user_password
-        self.client = TelegramClient(f"sessions/session_{phone_number}", api_id, api_hash)
+        self.client = TelegramClient("session_{phone_number}", api_id, api_hash)
         self.connected = False
 
     async def connect(self):
@@ -88,30 +88,35 @@ class MessageForwarder:
             print(f"Chat ID: {dialog.id}, Title: {dialog.title}")
 
     async def forward_new_messages(self):
-        try:
-            if not self.connected:
-                await self.connect()
+        while True:
+            try:
+                if not self.connected:
+                    await self.connect()
 
-            async with self.client:
-                source_entities = await asyncio.gather(*[self.client.get_entity(channel_id) for channel_id in self.source_channel_ids])
-                source_channel_ids = [entity.id for entity in source_entities]
+                async with self.client:
+                    source_entities = await asyncio.gather(*[self.client.get_entity(channel_id) for channel_id in self.source_channel_ids])
+                    source_channel_ids = [entity.id for entity in source_entities]
 
-                @self.client.on(events.NewMessage(chats=source_channel_ids))
-                async def message_handler(event):
-                    try:
-                        await self.client.forward_messages(self.destination_channel_id, event.message)
-                        await process_bonus_code(apiEndpoints, event.message.text)
-                    except Exception as e:
-                        print(f"An error occurred while processing the message: {e}")
+                    @self.client.on(events.NewMessage(chats=source_channel_ids))
+                    async def message_handler(event):
+                        try:
+                            await self.client.forward_messages(self.destination_channel_id, event.message)
+                            await process_bonus_code(apiEndpoints, event.message.text)
+                        except Exception as e:
+                            print(f"An error occurred while processing the message: {e}")
 
-                await self.client.run_until_disconnected()
+                    await self.client.run_until_disconnected()
 
-        except SessionPasswordNeededError:
-            await self.client.sign_in(password=self.user_password)
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            print("Attempting to reconnect...")
-            await asyncio.sleep(5)
+            except SessionPasswordNeededError:
+                await self.client.sign_in(password=self.user_password)
+            except asyncio.CancelledError:
+                print("CancelledError caught, disconnecting...")
+                await self.disconnect()
+                break
+            except Exception as e:
+                print(f"An error occurred: {e}")
+                print("Attempting to reconnect...")
+                await asyncio.sleep(5)
 
 async def ping_endpoint(endpoint):
     try:
@@ -143,8 +148,7 @@ async def main():
         print("Choose an option:")
         print("1. List Chats")
         print("2. Forward New Messages")
-        # choice = get_input("Enter your choice: ")
-        choice = "2"
+        choice = "2"  # Simulated choice for demonstration
         if choice == "1":
             await forwarder.list_chats()
         elif choice == "2":
@@ -158,4 +162,7 @@ async def main():
 
 if __name__ == "__main__":
     apiEndpoints = []  # Initialize global variable
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("KeyboardInterrupt caught, exiting...")
