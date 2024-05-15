@@ -63,7 +63,7 @@ class MessageForwarder:
         self.source_channel_ids = source_channel_ids
         self.destination_channel_id = destination_channel_id
         self.user_password = user_password
-        self.client = TelegramClient(session_dir, api_id, api_hash)
+        self.client = TelegramClient("session_{phone_number}", api_id, api_hash)
         self.connected = False
 
     async def connect(self):
@@ -144,7 +144,8 @@ async def main():
         print("Choose an option:")
         print("1. List Chats")
         print("2. Forward New Messages")
-        choice = get_input("Enter your choice: ")
+        # choice = get_input("Enter your choice: ")
+        choice = "2"
         if choice == "1":
             await forwarder.list_chats()
         elif choice == "2":
