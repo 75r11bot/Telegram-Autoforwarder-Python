@@ -158,8 +158,8 @@ async def main():
     forwarder = MessageForwarder(api_id, api_hash, phone_number, source_channel_ids, destination_channel_id, user_password)
     api_endpoints = [
         os.environ.get('API_ENDPOINT_1'),
-        # os.environ.get('API_ENDPOINT_2'),
-        # os.environ.get('API_ENDPOINT_3')
+        os.environ.get('API_ENDPOINT_2'),
+        os.environ.get('API_ENDPOINT_3')
     ]
 
     tasks = [ping_endpoint(endpoint) for endpoint in api_endpoints]
