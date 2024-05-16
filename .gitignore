@@ -1,6 +1,6 @@
 # Session files
-*.session*
-sessions/*
+# *.session*
+# sessions/*
 # Credentials
 credentials.txt
 config.ini
