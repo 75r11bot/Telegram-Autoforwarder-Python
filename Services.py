@@ -1,9 +1,10 @@
-import aiohttp
 import os
-import re
+import aiohttp
 import asyncio
-from datetime import datetime
 from dotenv import load_dotenv
+import re
+import uuid
+from datetime import datetime
 
 # Load environment variables from .env file
 load_dotenv()
@@ -11,6 +12,118 @@ load_dotenv()
 # Constants
 RETRY_INTERVAL_MS = 10  # Retry interval for specific response codes in milliseconds
 RATE_LIMIT_INTERVAL_MS = 500  # Interval to wait if rate limit is exceeded in milliseconds
+
+async def get_input(prompt, default=None):
+    if default is not None:
+        return default
+    else:
+        return input(prompt).strip()
+
+async def get_login_code():
+    # Take a screenshot
+    screenshot = ImageGrab.grab()
+    
+    # Perform OCR on the screenshot
+    text = pytesseract.image_to_string(screenshot)
+    
+    # Parse the text to find the login code
+    pattern = r"Login code: (\d+)"
+    match = re.search(pattern, text)
+    if match:
+        code = match.group(1)
+        return code
+    else:
+        return None
+
+class MessageForwarder:
+    def __init__(self, api_id, api_hash, phone_number, source_channel_ids, destination_channel_id, user_password):
+        # Create the session directory if it doesn't exist
+        session_dir = 'sessions'
+        if not os.path.exists(session_dir):
+            os.makedirs(session_dir)
+
+        # Use a unique session name
+        unique_session_name = f"{session_dir}/session_{phone_number}_{uuid.uuid4()}"
+        session_path = os.path.join(session_dir, unique_session_name + '.session')
+        
+        if os.path.exists(session_path):
+            os.remove(session_path)  # Remove old session file if it exists
+
+        self.api_id = api_id
+        self.api_hash = api_hash
+        self.phone_number = phone_number
+        self.source_channel_ids = source_channel_ids
+        self.destination_channel_id = destination_channel_id
+        self.user_password = user_password
+
+        self.client = TelegramClient(unique_session_name, api_id, api_hash)
+        self.connected = False
+
+    async def connect(self):
+        await self.client.connect()
+        self.connected = True
+
+    async def disconnect(self):
+        await self.client.disconnect()
+        self.connected = False
+
+    async def list_chats(self):
+        if not self.connected:
+            await self.connect()
+
+        if not await self.client.is_user_authorized():
+            await self.client.send_code_request(self.phone_number)
+            code = get_input('Enter the code: ').strip()
+            await self.client.sign_in(self.phone_number, code)
+
+        dialogs = await self.client.get_dialogs()
+        for dialog in dialogs:
+            print(f"Chat ID: {dialog.id}, Title: {dialog.title}")
+
+    async def forward_new_messages(self):
+        while True:
+            try:
+                if not self.connected:
+                    await self.connect()
+
+                async with self.client:
+                    source_entities = await asyncio.gather(*[self.client.get_entity(channel_id) for channel_id in self.source_channel_ids])
+                    source_channel_ids = [entity.id for entity in source_entities]
+
+                    @self.client.on(events.NewMessage(chats=source_channel_ids))
+                    async def message_handler(event):
+                        try:
+                            print(f"New message received: {event.message.text}")  # Debug statement
+                            await self.client.forward_messages(self.destination_channel_id, event.message)
+                            print(f"Message forwarded to {self.destination_channel_id}")  # Debug statement
+                            await process_bonus_code(apiEndpoints, event.message.text)
+                            print("process_bonus_code called successfully")  # Debug statement
+                        except Exception as e:
+                            print(f"An error occurred while processing the message: {e}")
+
+                    await self.client.run_until_disconnected()
+
+            except SessionPasswordNeededError:
+                await self.client.sign_in(password=self.user_password)
+            except asyncio.CancelledError:
+                print("CancelledError caught, disconnecting...")
+                await self.disconnect()
+                break
+            except Exception as e:
+                print(f"An error occurred: {e}")
+                print("Attempting to reconnect...")
+                await asyncio.sleep(5)
+
+async def ping_endpoint(endpoint):
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(endpoint) as response:
+                if response.status == 200:
+                    print(f"Endpoint {endpoint} is reachable.")
+                else:
+                    print(f"Endpoint {endpoint} is not reachable. Status code: {response.status}")
+    except aiohttp.ClientError as e:
+        print(f"Error connecting to {endpoint}: {e}")
 
 async def send_next_request(data_array, api_endpoint, headers):
     async def sleep(ms):
