@@ -20,7 +20,7 @@ destination_channel_id = int(os.environ.get('DESTINATION_CHANNEL_ID'))
 phone_number = os.environ.get('APP_YOUR_PHONE')
 user_password = os.environ.get('APP_YOUR_PWD')
 telegram_channel_id = int(os.environ.get('TELEGRAM_CHANNEL_ID'))
-
+apiEndpoints=[]
 
 async def get_input(prompt, default=None):
     return default if default is not None else input(prompt).strip()
@@ -107,6 +107,7 @@ class MessageForwarder:
             print(f"Chat ID: {dialog.id}, Title: {dialog.title}")
 
     async def forward_new_messages(self):
+        print(apiEndpoints)
         while True:
             try:
                 if not self.connected:
@@ -147,6 +148,7 @@ async def ping_endpoint(endpoint):
             async with session.get(endpoint) as response:
                 if response.status == 200:
                     print(f"Endpoint {endpoint} is reachable.")
+                    apiEndpoints.append(endpoint)
                 else:
                     print(f"Endpoint {endpoint} is not reachable. Status code: {response.status}")
     except aiohttp.ClientError as e:
@@ -156,8 +158,8 @@ async def main():
     forwarder = MessageForwarder(api_id, api_hash, phone_number, source_channel_ids, destination_channel_id, user_password)
     api_endpoints = [
         os.environ.get('API_ENDPOINT_1'),
-        os.environ.get('API_ENDPOINT_2'),
-        os.environ.get('API_ENDPOINT_3')
+        # os.environ.get('API_ENDPOINT_2'),
+        # os.environ.get('API_ENDPOINT_3')
     ]
 
     tasks = [ping_endpoint(endpoint) for endpoint in api_endpoints]
