@@ -19,21 +19,7 @@ async def get_input(prompt, default=None):
     else:
         return input(prompt).strip()
 
-async def get_login_code():
-    # Take a screenshot
-    screenshot = ImageGrab.grab()
-    
-    # Perform OCR on the screenshot
-    text = pytesseract.image_to_string(screenshot)
-    
-    # Parse the text to find the login code
-    pattern = r"Login code: (\d+)"
-    match = re.search(pattern, text)
-    if match:
-        code = match.group(1)
-        return code
-    else:
-        return None
+
 
 class MessageForwarder:
     def __init__(self, api_id, api_hash, phone_number, source_channel_ids, destination_channel_id, user_password):

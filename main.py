@@ -5,6 +5,7 @@ from telethon import TelegramClient, events
 from telethon.errors import SessionPasswordNeededError
 from dotenv import load_dotenv
 import re
+from Services import process_bonus_code
 
 load_dotenv()
 
@@ -24,15 +25,16 @@ telegram_channel_id = int(os.environ.get('TELEGRAM_CHANNEL_ID'))
 async def get_input(prompt, default=None):
     return default if default is not None else input(prompt).strip()
 
-async def get_login_code(channel_id):
+async def get_login_code(telegram_channel_id):
     async with TelegramClient('anon', api_id, api_hash) as client:
-        async for message in client.iter_messages(channel_id, limit=1):
+        async for message in client.iter_messages(telegram_channel_id, limit=1):
             text = message.text
             match = re.search(r"Login code: (\d+)", text)
             if match:
                 return match.group(1)
             else:
                 return None
+
 
 class MessageForwarder:
     def __init__(self, api_id, api_hash, phone_number, source_channel_ids, destination_channel_id, user_password):
@@ -120,6 +122,8 @@ class MessageForwarder:
                             print(f"New message received: {event.message.text}")  
                             await self.client.forward_messages(self.destination_channel_id, event.message)
                             print(f"Message forwarded to {self.destination_channel_id}") 
+                            await process_bonus_code(apiEndpoints, event.message.text)
+                            print("process_bonus_code called successfully")  # Debug statement
                             # Call function to process bonus code here
                         except Exception as e:
                             print(f"An error occurred while processing the message: {e}")
