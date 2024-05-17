@@ -12,56 +12,53 @@ load_dotenv()
 RETRY_INTERVAL_MS = 50  # Retry interval for specific response codes in milliseconds
 RATE_LIMIT_INTERVAL_MS = 5000  # Interval to wait if rate limit is exceeded in milliseconds
 
-async def send_next_request(data_array, api_endpoint, headers):
-    async def sleep(ms):
-        await asyncio.sleep(ms / 1000)  # Convert milliseconds to seconds
+async def send_request(card_no, session, api_endpoint, headers):
+    form_data = {
+        'platformType': os.environ.get('PLATFORM_TYPE', '1'),
+        'isCancelDiscount': 'F',
+        'siteId': "1451470260579512322",
+        'siteCode': "ybaxcf-4",
+        'cardNo': card_no
+    }
 
+    try:
+        async with session.post(
+            f"{api_endpoint}/cash/v/pay/generatePayCardV2",
+            data=form_data,
+            headers=headers
+        ) as response:
+            try:
+                response_data = await response.json()
+                print("Response Body:", response_data)
+                if response_data.get('code') == 9999:
+                    print("Response code is 9999. Retrying request...")
+                    await asyncio.sleep(RETRY_INTERVAL_MS / 1000)  # Convert ms to seconds
+                    return await send_request(card_no, session, api_endpoint, headers)  # Retry the request
+                elif response_data.get('code') == 10003:
+                    print("Rate limit exceeded. Retrying after delay...")
+                    await asyncio.sleep(RATE_LIMIT_INTERVAL_MS / 1000)  # Convert ms to seconds
+                    return await send_request(card_no, session, api_endpoint, headers)  # Retry the request
+                elif response_data.get('code') == 10140:
+                    print("Token expired. Updating token and retrying request...")
+                    headers['Token'] = os.environ.get('H25_TOKEN2')
+                    await asyncio.sleep(RATE_LIMIT_INTERVAL_MS / 1000)  # Convert ms to seconds
+                    return await send_request(card_no, session, api_endpoint, headers)  # Retry the request with new token
+                else:
+                    print("Request succeeded.")
+                    # Handle successful request here if needed
+            except aiohttp.ContentTypeError:
+                text_response = await response.text()
+                print("Unexpected response content:", text_response)
+                print("Headers:", response.headers)
+                # Handle non-JSON response here
+    except aiohttp.ClientError as error:
+        print(f"Error sending request to API: {error}")
+        # Implement additional error handling logic here if needed
+
+async def send_next_request(data_array, api_endpoint, headers):
     async with aiohttp.ClientSession() as session:
         for card_no in data_array:
-            form_data = {
-                'platformType': os.environ.get('PLATFORM_TYPE', '1'),
-                'isCancelDiscount': 'F',
-                'siteId': "1451470260579512322",
-                'siteCode': "ybaxcf-4",
-                'cardNo': card_no
-            }
-
-            headers['Token'] = os.environ.get('H25_TOKEN1')
-
-            try:
-                async with session.post(
-                    f"{api_endpoint}/cash/v/pay/generatePayCardV2",
-                    data=form_data,
-                    headers=headers
-                ) as response:
-                    try:
-                        response_data = await response.json()
-                        print("Response Body:", response_data)
-                        if response_data.get('code') == 9999:
-                            print("Response code is 9999. Retrying request...")
-                            await asyncio.sleep(RATE_LIMIT_INTERVAL_MS / 1000) 
-                            continue 
-                        elif response_data.get('code') == 10003:
-                            print("Rate limit exceeded. Retrying after delay...")
-                            await asyncio.sleep(RATE_LIMIT_INTERVAL_MS / 1000) 
-                            continue 
-                        elif response_data.get('code') == 10140:
-                            print("Token expired. Updating token and retrying request...")
-                            headers['Token'] = os.environ.get('H25_TOKEN2')
-                            await asyncio.sleep(RATE_LIMIT_INTERVAL_MS / 1000) 
-                            continue 
-                        else:
-                            print("Request succeeded.")
-                            # Handle successful request here if needed
-                    except aiohttp.ContentTypeError:
-                        text_response = await response.text()
-                        print("Unexpected response content:", text_response)
-                        print("Headers:", response.headers)
-                        # Handle non-JSON response here
-            except aiohttp.ClientError as error:
-                print(f"Error sending request to API: {error}")
-                # Implement additional error handling logic here if needed
-
+            await send_request(card_no, session, api_endpoint, headers)
 
 async def mock_send_requests(endpoint, data_array):
     try:
@@ -125,3 +122,4 @@ def parse_message(message):
         codes.extend(numbers)
 
     return codes
+
