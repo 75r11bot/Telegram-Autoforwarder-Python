@@ -6,6 +6,7 @@ from telethon.errors import SessionPasswordNeededError
 from dotenv import load_dotenv
 import re
 from Services import process_bonus_code
+import sys
 
 load_dotenv()
 
@@ -21,16 +22,18 @@ phone_number = os.environ.get('APP_YOUR_PHONE')
 user_password = os.environ.get('APP_YOUR_PWD')
 telegram_channel_id = int(os.environ.get('TELEGRAM_CHANNEL_ID'))
 apiEndpoints = []
+default_choice = os.getenv("USER_CHOICE", "2")
+
+def is_interactive():
+    return sys.stdin.isatty()
 
 async def get_input(prompt, default=None, timeout=30):
-    try:
-        return await asyncio.wait_for(_get_input(prompt, default), timeout)
-    except asyncio.TimeoutError:
-        print(f"No input received within {timeout} seconds, using default value: {default}")
+    if not is_interactive():
         return default
-
-async def _get_input(prompt, default=None):
-    return default if default is not None else input(prompt).strip()
+    try:
+        return await asyncio.wait_for(asyncio.to_thread(input, prompt), timeout)
+    except asyncio.TimeoutError:
+        return default
 
 async def get_login_code(telegram_channel_id):
     async with TelegramClient('anon', api_id, api_hash) as client:
@@ -44,10 +47,12 @@ async def get_login_code(telegram_channel_id):
 
 class MessageForwarder:
     def __init__(self, api_id, api_hash, phone_number, source_channel_ids, destination_channel_id, user_password):
+        # Create the session directory if it doesn't exist
         session_dir = 'sessions'
         if not os.path.exists(session_dir):
             os.makedirs(session_dir)
 
+        # Use a unique session name
         self.session_name = f"{session_dir}/session_{phone_number}"
         self.session_path = self.session_name + '.session'
         
@@ -77,9 +82,9 @@ class MessageForwarder:
                     os.remove(self.session_path)
                 except PermissionError:
                     print("Unable to remove session file. Waiting for a moment and retrying...")
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(1)  # Wait for a short duration
                     try:
-                        os.remove(self.session_path)
+                        os.remove(self.session_path)  # Retry removing the file
                     except PermissionError:
                         print("Unable to remove session file even after retrying.")
                 self.client = TelegramClient(self.session_name, self.api_id, self.api_hash)
@@ -96,11 +101,11 @@ class MessageForwarder:
 
         if not await self.client.is_user_authorized():
             await self.client.send_code_request(self.phone_number)
-            code = await get_login_code(telegram_channel_id) or await get_input('Enter the code: ')
+            code = await get_input('Enter the code: ', default=await get_login_code(telegram_channel_id), timeout=30)
             try:
                 await self.client.sign_in(self.phone_number, code)
             except SessionPasswordNeededError:
-                password = self.user_password or await get_input('Two-step verification is enabled. Please enter your password: ')
+                password = await get_input("Two-step verification is enabled. Please enter your password: ", default=self.user_password, timeout=30)
                 await self.client.sign_in(password=password)
             except Exception as e:
                 print(f"An error occurred during sign-in: {e}")
@@ -128,7 +133,7 @@ class MessageForwarder:
                             await self.client.forward_messages(self.destination_channel_id, event.message)
                             print(f"Message forwarded to {self.destination_channel_id}") 
                             await process_bonus_code(apiEndpoints, event.message.text)
-                            print("process_bonus_code called successfully")  
+                            print("process_bonus_code called successfully")  # Debug statement
                         except Exception as e:
                             print(f"An error occurred while processing the message: {e}")
 
@@ -157,6 +162,35 @@ async def ping_endpoint(endpoint):
     except aiohttp.ClientError as e:
         print(f"Error connecting to {endpoint}: {e}")
 
+# async def main():
+#     forwarder = MessageForwarder(api_id, api_hash, phone_number, source_channel_ids, destination_channel_id, user_password)
+#     api_endpoints = [
+#         os.environ.get('API_ENDPOINT_1'),
+#         os.environ.get('API_ENDPOINT_2'),
+#         os.environ.get('API_ENDPOINT_3')
+#     ]
+
+#     tasks = [ping_endpoint(endpoint) for endpoint in api_endpoints]
+#     await asyncio.gather(*tasks)
+
+#     choice = await get_input("Please enter the choice: ", default=default_choice, timeout=15)
+    
+#     if choice == "1":
+#         await forwarder.list_chats()
+#     elif choice == "2":
+#         try:
+#             await forwarder.forward_new_messages()
+#         except Exception as e:
+#             print(f"An error occurred: {e}")
+#     else:
+#         print("Invalid choice")
+
+# if __name__ == "__main__":
+#     try:
+#         asyncio.run(main())
+#     except KeyboardInterrupt:
+#         print("KeyboardInterrupt caught, exiting...")
+
 async def main():
     forwarder = MessageForwarder(api_id, api_hash, phone_number, source_channel_ids, destination_channel_id, user_password)
     api_endpoints = [
@@ -168,17 +202,18 @@ async def main():
     tasks = [ping_endpoint(endpoint) for endpoint in api_endpoints]
     await asyncio.gather(*tasks)
 
-    choice = os.getenv("USER_CHOICE", "2")  # Default to "2" if not set
-
-    if choice == "1":
-        await forwarder.list_chats()
-    elif choice == "2":
-        try:
-            await forwarder.forward_new_messages()
-        except Exception as e:
-            print(f"An error occurred: {e}")
-    else:
-        print("Invalid choice")
+    while True:
+        choice = await get_input("Please enter the choice (1 to list chats, 2 to forward messages): ", default=default_choice, timeout=30)
+        
+        if choice == "1":
+            await forwarder.list_chats()
+        elif choice == "2":
+            try:
+                await forwarder.forward_new_messages()
+            except Exception as e:
+                print(f"An error occurred: {e}")
+        else:
+            print("Invalid choice, please enter 1 or 2.")
 
 if __name__ == "__main__":
     try:
