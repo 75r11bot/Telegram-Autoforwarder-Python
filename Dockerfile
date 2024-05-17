@@ -13,5 +13,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of your application code into the container
 COPY . .
 
+# Ensure the sessions directory exists and has appropriate permissions
+RUN mkdir -p /app/sessions && chmod -R 777 /app/sessions
+
 # Run the application
 CMD ["python", "main.py"]

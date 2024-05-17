@@ -1,7 +1,10 @@
-version: '3.8'
+version: '3'
 
 services:
-  app:
+   app:
+    image: python_telegram_auto_forward-app
+    volumes:
+      - ./sessions:/app/sessions
     build:
       context: .
       dockerfile: Dockerfile
@@ -24,6 +27,4 @@ services:
       - DEVICE_CODE=${DEVICE_CODE}
       - SIGN=${SIGN}
       - USER_CHOICE=${USER_CHOICE}  # Ensure this is set in your .env file
-    volumes:
-      - .:/app
     command: python main.py
