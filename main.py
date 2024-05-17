@@ -14,8 +14,7 @@ api_id = int(os.environ.get('API_ID'))
 api_hash = os.environ.get('API_HASH')
 source_channel_ids = [
     int(os.environ.get('SOURCE_CHANNEL_ID')),
-    int(os.environ.get('TELEGRAM_CHANNEL_ID')),
-    int(os.environ.get('TEST_CHANNEL_ID'))
+    int(os.environ.get('TEST_SOURCE_CHANNEL_ID'))
 ]
 destination_channel_id = int(os.environ.get('DESTINATION_CHANNEL_ID'))
 phone_number = os.environ.get('APP_YOUR_PHONE')

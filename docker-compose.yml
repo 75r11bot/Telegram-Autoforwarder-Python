@@ -1,9 +1,10 @@
-version: '3'
+version: '3.9'
 
 services:
    app:
     image: python_telegram_auto_forward-app
     volumes:
+      - .:/app
       - ./sessions:/app/sessions
     build:
       context: .
@@ -15,7 +16,8 @@ services:
       - H25_CHANNEL_ID=${H25_CHANNEL_ID}
       - DESTINATION_CHANNEL_ID=${DESTINATION_CHANNEL_ID}
       - SOURCE_CHANNEL_ID=${SOURCE_CHANNEL_ID}
-      - TEST_CHANNEL_ID=${TEST_CHANNEL_ID}
+      - BOT_CHANNEL_ID=${BOT_CHANNEL_ID}
+      - TEST_SOURCE_CHANNEL_ID=${TEST_SOURCE_CHANNEL_ID}
       - TELEGRAM_CHANNEL_ID=${TELEGRAM_CHANNEL_ID}
       - APP_YOUR_PWD=${APP_YOUR_PWD}
       - API_ENDPOINT_1=${API_ENDPOINT_1}
