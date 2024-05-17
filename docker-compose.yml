@@ -23,6 +23,7 @@ services:
       - H25_TOKEN2=${H25_TOKEN2}
       - DEVICE_CODE=${DEVICE_CODE}
       - SIGN=${SIGN}
+      - USER_CHOICE=${USER_CHOICE}  # Ensure this is set in your .env file
     volumes:
       - .:/app
     command: python main.py

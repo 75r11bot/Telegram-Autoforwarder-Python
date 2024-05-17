@@ -22,7 +22,14 @@ user_password = os.environ.get('APP_YOUR_PWD')
 telegram_channel_id = int(os.environ.get('TELEGRAM_CHANNEL_ID'))
 apiEndpoints = []
 
-async def get_input(prompt, default=None):
+async def get_input(prompt, default=None, timeout=30):
+    try:
+        return await asyncio.wait_for(_get_input(prompt, default), timeout)
+    except asyncio.TimeoutError:
+        print(f"No input received within {timeout} seconds, using default value: {default}")
+        return default
+
+async def _get_input(prompt, default=None):
     return default if default is not None else input(prompt).strip()
 
 async def get_login_code(telegram_channel_id):
@@ -35,15 +42,12 @@ async def get_login_code(telegram_channel_id):
             else:
                 return None
 
-
 class MessageForwarder:
     def __init__(self, api_id, api_hash, phone_number, source_channel_ids, destination_channel_id, user_password):
-        # Create the session directory if it doesn't exist
         session_dir = 'sessions'
         if not os.path.exists(session_dir):
             os.makedirs(session_dir)
 
-        # Use a unique session name
         self.session_name = f"{session_dir}/session_{phone_number}"
         self.session_path = self.session_name + '.session'
         
@@ -73,9 +77,9 @@ class MessageForwarder:
                     os.remove(self.session_path)
                 except PermissionError:
                     print("Unable to remove session file. Waiting for a moment and retrying...")
-                    await asyncio.sleep(1)  # Wait for a short duration
+                    await asyncio.sleep(1)
                     try:
-                        os.remove(self.session_path)  # Retry removing the file
+                        os.remove(self.session_path)
                     except PermissionError:
                         print("Unable to remove session file even after retrying.")
                 self.client = TelegramClient(self.session_name, self.api_id, self.api_hash)
@@ -124,8 +128,7 @@ class MessageForwarder:
                             await self.client.forward_messages(self.destination_channel_id, event.message)
                             print(f"Message forwarded to {self.destination_channel_id}") 
                             await process_bonus_code(apiEndpoints, event.message.text)
-                            print("process_bonus_code called successfully")  # Debug statement
-                            # Call function to process bonus code here
+                            print("process_bonus_code called successfully")  
                         except Exception as e:
                             print(f"An error occurred while processing the message: {e}")
 
@@ -165,20 +168,17 @@ async def main():
     tasks = [ping_endpoint(endpoint) for endpoint in api_endpoints]
     await asyncio.gather(*tasks)
 
-    while True:
-        print("Choose an option:")
-        print("1. List Chats")
-        print("2. Forward New Messages")
-        choice = await get_input("Please enter the choice: ")
-        if choice == "1":
-            await forwarder.list_chats()
-        elif choice == "2":
-            try:
-                await forwarder.forward_new_messages()
-            except Exception as e:
-                print(f"An error occurred: {e}")
-        else:
-            print("Invalid choice")
+    choice = os.getenv("USER_CHOICE", "2")  # Default to "2" if not set
+
+    if choice == "1":
+        await forwarder.list_chats()
+    elif choice == "2":
+        try:
+            await forwarder.forward_new_messages()
+        except Exception as e:
+            print(f"An error occurred: {e}")
+    else:
+        print("Invalid choice")
 
 if __name__ == "__main__":
     try:
