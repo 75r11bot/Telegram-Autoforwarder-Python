@@ -20,7 +20,7 @@ destination_channel_id = int(os.environ.get('DESTINATION_CHANNEL_ID'))
 phone_number = os.environ.get('APP_YOUR_PHONE')
 user_password = os.environ.get('APP_YOUR_PWD')
 telegram_channel_id = int(os.environ.get('TELEGRAM_CHANNEL_ID'))
-apiEndpoints=[]
+apiEndpoints = []
 
 async def get_input(prompt, default=None):
     return default if default is not None else input(prompt).strip()

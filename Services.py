@@ -137,12 +137,17 @@ async def send_next_request(data_array, api_endpoint, headers):
                         print("Response Body:", response_data)
                         if response_data.get('code') == 9999:
                             print("Response code is 9999. Retrying request...")
-                            await sleep(RETRY_INTERVAL_MS)
-                            continue  # Retry the request without incrementing card_no
+                            await asyncio.sleep(RETRY_INTERVAL_MS / 1000)  # Convert ms to seconds
+                            await send_request(card_no, session, api_endpoint, headers)  # Retry the request
                         elif response_data.get('code') == 10003:
                             print("Rate limit exceeded. Retrying after delay...")
-                            await sleep(RATE_LIMIT_INTERVAL_MS)
-                            continue  # Retry the request without incrementing card_no
+                            await asyncio.sleep(RATE_LIMIT_INTERVAL_MS / 1000)  # Convert ms to seconds
+                            await send_request(card_no, session, api_endpoint, headers)  # Retry the request
+                        elif response_data.get('code') == 10140:
+                            print("Token expired. Updating token and retrying request...")
+                            headers['Token'] = await os.environ.get('H25_TOKEN2')
+                            await asyncio.sleep(RATE_LIMIT_INTERVAL_MS / 1000)  # Convert ms to seconds
+                            await send_request(card_no, session, api_endpoint, headers)  # Retry the request with new token
                     except aiohttp.ContentTypeError:
                         text_response = await response.text()
                         print("Unexpected response content:", text_response)
