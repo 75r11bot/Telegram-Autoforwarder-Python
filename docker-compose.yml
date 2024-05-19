@@ -29,5 +29,4 @@ services:
       - DEVICE_CODE=${DEVICE_CODE}
       - SIGN=${SIGN}
       - USER_CHOICE=${USER_CHOICE}  # Ensure this is set in your .env file
-    entrypoint: /entrypoint.sh
     command: python main.py

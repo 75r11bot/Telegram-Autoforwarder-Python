@@ -16,8 +16,5 @@ COPY . .
 # Ensure the sessions directory exists and has appropriate permissions
 RUN mkdir -p /app/sessions && chmod -R 777 /app/sessions
 
-# Set the entrypoint
-ENTRYPOINT ["/entrypoint.sh"]
-
 # Run the application
 CMD ["python", "main.py"]
