@@ -12,10 +12,7 @@ load_dotenv()
 
 api_id = int(os.environ.get('API_ID'))
 api_hash = os.environ.get('API_HASH')
-source_channel_ids = [
-    int(os.environ.get('SOURCE_CHANNEL_ID')),
-    int(os.environ.get('TEST_SOURCE_CHANNEL_ID'))
-]
+source_channel_id = int(os.environ.get('SOURCE_CHANNEL_ID'))
 destination_channel_id = int(os.environ.get('DESTINATION_CHANNEL_ID'))
 phone_number = os.environ.get('APP_YOUR_PHONE')
 user_password = os.environ.get('APP_YOUR_PWD')
@@ -45,7 +42,7 @@ async def get_login_code(telegram_channel_id):
                 return None
 
 class MessageForwarder:
-    def __init__(self, api_id, api_hash, phone_number, source_channel_ids, destination_channel_id, user_password):
+    def __init__(self, api_id, api_hash, phone_number, source_channel_id, destination_channel_id, user_password):
         # Create the session directory if it doesn't exist
         session_dir = 'sessions'
         if not os.path.exists(session_dir):
@@ -58,7 +55,7 @@ class MessageForwarder:
         self.api_id = api_id
         self.api_hash = api_hash
         self.phone_number = phone_number
-        self.source_channel_ids = source_channel_ids
+        self.source_channel_id = source_channel_id
         self.destination_channel_id = destination_channel_id
         self.user_password = user_password
 
@@ -122,10 +119,9 @@ class MessageForwarder:
                     await self.connect()
 
                 async with self.client:
-                    source_entities = await asyncio.gather(*[self.client.get_entity(channel_id) for channel_id in self.source_channel_ids])
-                    source_channel_ids = [entity.id for entity in source_entities]
+                    source_entity = await self.client.get_entity(self.source_channel_id)
 
-                    @self.client.on(events.NewMessage(chats=source_channel_ids))
+                    @self.client.on(events.NewMessage(chats=source_entity.id))
                     async def message_handler(event):
                         try:
                             print(f"New message received: {event.message.text}")  
@@ -161,9 +157,8 @@ async def ping_endpoint(endpoint):
     except aiohttp.ClientError as e:
         print(f"Error connecting to {endpoint}: {e}")
 
-
 async def main():
-    forwarder = MessageForwarder(api_id, api_hash, phone_number, source_channel_ids, destination_channel_id, user_password)
+    forwarder = MessageForwarder(api_id, api_hash, phone_number, source_channel_id, destination_channel_id, user_password)
     api_endpoints = [
         os.environ.get('API_ENDPOINT_1'),
         os.environ.get('API_ENDPOINT_2'),

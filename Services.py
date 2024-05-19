@@ -20,7 +20,7 @@ async def send_request(card_no, session, api_endpoint, headers):
         'siteCode': "ybaxcf-4",
         'cardNo': card_no
     }
-
+    print( f"{api_endpoint}/cash/v/pay/generatePayCardV2")
     try:
         async with session.post(
             f"{api_endpoint}/cash/v/pay/generatePayCardV2",

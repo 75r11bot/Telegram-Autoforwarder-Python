@@ -1,11 +1,7 @@
 version: '3.9'
 
 services:
-   app:
-    image: python_telegram_auto_forward-app
-    volumes:
-      - .:/app
-      - ./sessions:/app/sessions
+  app:
     build:
       context: .
       dockerfile: Dockerfile
@@ -28,6 +24,8 @@ services:
       - H25_TOKEN2=${H25_TOKEN2}
       - DEVICE_CODE=${DEVICE_CODE}
       - SIGN=${SIGN}
-      - USER_CHOICE=${USER_CHOICE}  # Ensure this is set in your .env file
-    entrypoint: /entrypoint.sh
-    command: python main.py
+      - USER_CHOICE=${USER_CHOICE}
+    volumes:
+      - .:/app
+      - ./sessions:/app/sessions
+    command: ["python", "main.py"]
