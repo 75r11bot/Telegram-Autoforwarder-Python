@@ -10,7 +10,7 @@ load_dotenv()
 
 # Constants
 RETRY_INTERVAL_MS = 50  # Retry interval for specific response codes in milliseconds
-RATE_LIMIT_INTERVAL_MS = 5000  # Interval to wait if rate limit is exceeded in milliseconds
+RATE_LIMIT_INTERVAL_MS = 50  # Interval to wait if rate limit is exceeded in milliseconds
 
 async def send_request(card_no, session, api_endpoint, headers):
     form_data = {

@@ -161,34 +161,6 @@ async def ping_endpoint(endpoint):
     except aiohttp.ClientError as e:
         print(f"Error connecting to {endpoint}: {e}")
 
-# async def main():
-#     forwarder = MessageForwarder(api_id, api_hash, phone_number, source_channel_ids, destination_channel_id, user_password)
-#     api_endpoints = [
-#         os.environ.get('API_ENDPOINT_1'),
-#         os.environ.get('API_ENDPOINT_2'),
-#         os.environ.get('API_ENDPOINT_3')
-#     ]
-
-#     tasks = [ping_endpoint(endpoint) for endpoint in api_endpoints]
-#     await asyncio.gather(*tasks)
-
-#     choice = await get_input("Please enter the choice: ", default=default_choice, timeout=15)
-    
-#     if choice == "1":
-#         await forwarder.list_chats()
-#     elif choice == "2":
-#         try:
-#             await forwarder.forward_new_messages()
-#         except Exception as e:
-#             print(f"An error occurred: {e}")
-#     else:
-#         print("Invalid choice")
-
-# if __name__ == "__main__":
-#     try:
-#         asyncio.run(main())
-#     except KeyboardInterrupt:
-#         print("KeyboardInterrupt caught, exiting...")
 
 async def main():
     forwarder = MessageForwarder(api_id, api_hash, phone_number, source_channel_ids, destination_channel_id, user_password)
