@@ -16,5 +16,8 @@ COPY . .
 # Ensure the sessions directory exists and has appropriate permissions
 RUN mkdir -p /app/sessions && chmod -R 777 /app/sessions
 
+# Expose the port your app runs on
+EXPOSE 8000
+
 # Run the application
 CMD ["python", "main.py"]

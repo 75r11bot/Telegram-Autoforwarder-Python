@@ -1,24 +1,26 @@
 import os
 import aiohttp
 import asyncio
+from aiohttp import web
 from telethon import TelegramClient, events
 from telethon.errors import SessionPasswordNeededError
 from dotenv import load_dotenv
 import re
-from Services import process_bonus_code
 import sys
+from Services import process_bonus_code
 
 load_dotenv()
 
-api_id = int(os.environ.get('API_ID'))
-api_hash = os.environ.get('API_HASH')
-source_channel_id = int(os.environ.get('SOURCE_CHANNEL_ID'))
-destination_channel_id = int(os.environ.get('DESTINATION_CHANNEL_ID'))
-phone_number = os.environ.get('APP_YOUR_PHONE')
-user_password = os.environ.get('APP_YOUR_PWD')
-telegram_channel_id = int(os.environ.get('TELEGRAM_CHANNEL_ID'))
-apiEndpoints = []
+api_id = int(os.getenv('API_ID'))
+api_hash = os.getenv('API_HASH')
+source_channel_id = int(os.getenv('SOURCE_CHANNEL_ID'))
+destination_channel_id = int(os.getenv('DESTINATION_CHANNEL_ID'))
+phone_number = os.getenv('APP_YOUR_PHONE')
+user_password = os.getenv('APP_YOUR_PWD')
+telegram_channel_id = int(os.getenv('TELEGRAM_CHANNEL_ID'))
 default_choice = os.getenv("USER_CHOICE", "2")
+
+apiEndpoints = []
 
 def is_interactive():
     return sys.stdin.isatty()
@@ -43,15 +45,10 @@ async def get_login_code(telegram_channel_id):
 
 class MessageForwarder:
     def __init__(self, api_id, api_hash, phone_number, source_channel_id, destination_channel_id, user_password):
-        # Create the session directory if it doesn't exist
         session_dir = 'sessions'
-        if not os.path.exists(session_dir):
-            os.makedirs(session_dir)
+        os.makedirs(session_dir, exist_ok=True)
 
-        # Use a unique session name
         self.session_name = f"{session_dir}/session_{phone_number}"
-        self.session_path = self.session_name + '.session'
-        
         self.api_id = api_id
         self.api_hash = api_hash
         self.phone_number = phone_number
@@ -72,15 +69,15 @@ class MessageForwarder:
             return False
 
     async def connect(self):
-        if os.path.exists(self.session_path):
+        if os.path.exists(self.session_name + '.session'):
             if not await self.check_session_validity():
                 try:
-                    os.remove(self.session_path)
+                    os.remove(self.session_name + '.session')
                 except PermissionError:
-                    print("Unable to remove session file. Waiting for a moment and retrying...")
-                    await asyncio.sleep(1)  # Wait for a short duration
+                    print("Unable to remove session file. Retrying...")
+                    await asyncio.sleep(1)
                     try:
-                        os.remove(self.session_path)  # Retry removing the file
+                        os.remove(self.session_name + '.session')
                     except PermissionError:
                         print("Unable to remove session file even after retrying.")
                 self.client = TelegramClient(self.session_name, self.api_id, self.api_hash)
@@ -112,7 +109,6 @@ class MessageForwarder:
             print(f"Chat ID: {dialog.id}, Title: {dialog.title}")
 
     async def forward_new_messages(self):
-        print(apiEndpoints)
         while True:
             try:
                 if not self.connected:
@@ -124,11 +120,11 @@ class MessageForwarder:
                     @self.client.on(events.NewMessage(chats=source_entity.id))
                     async def message_handler(event):
                         try:
-                            print(f"New message received: {event.message.text}")  
+                            print(f"New message received: {event.message.text}")
                             await self.client.forward_messages(self.destination_channel_id, event.message)
-                            print(f"Message forwarded to {self.destination_channel_id}") 
+                            print(f"Message forwarded to {self.destination_channel_id}")
                             await process_bonus_code(apiEndpoints, event.message.text)
-                            print("process_bonus_code called successfully")  # Debug statement
+                            print("process_bonus_code called successfully")
                         except Exception as e:
                             print(f"An error occurred while processing the message: {e}")
 
@@ -160,17 +156,27 @@ async def ping_endpoint(endpoint):
 async def main():
     forwarder = MessageForwarder(api_id, api_hash, phone_number, source_channel_id, destination_channel_id, user_password)
     api_endpoints = [
-        os.environ.get('API_ENDPOINT_1'),
-        os.environ.get('API_ENDPOINT_2'),
-        os.environ.get('API_ENDPOINT_3')
+        os.getenv('API_ENDPOINT_1'),
+        os.getenv('API_ENDPOINT_2'),
+        os.getenv('API_ENDPOINT_3')
     ]
 
-    tasks = [ping_endpoint(endpoint) for endpoint in api_endpoints]
+    tasks = [ping_endpoint(endpoint) for endpoint in api_endpoints if endpoint]
     await asyncio.gather(*tasks)
 
+    app = web.Application()
+    app.router.add_get('/', lambda request: web.Response(text="H25, Telegram New Message forwarded to Bonus Code Gruup And Sending Request to called Api"))
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', 8000)
+    await site.start()
+
+    print("======= Serving on http://0.0.0.0:8000/ ======")
+
     while True:
+        await asyncio.sleep(1500)
         choice = await get_input("Please enter the choice (1 to list chats, 2 to forward messages): ", default=default_choice, timeout=30)
-        
+
         if choice == "1":
             await forwarder.list_chats()
         elif choice == "2":
